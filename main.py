@@ -14,9 +14,9 @@ from webdriver_manager.chrome import ChromeDriverManager
 from bs4 import BeautifulSoup
 from model import *
 
-VERSION = 'v0.0.1a'
+VERSION = 'v0.1.0a'
 DATE = '2024-06-02(수)'
-AUTHOR = '한국항공대학교 컴퓨터공학과 24학번'
+AUTHOR = '한국항공대학교 컴퓨터공학과'
 '''
 현재 구현된 기능 목록(v0.0.1a)
 - 강의 목록 크롤링
@@ -25,13 +25,13 @@ AUTHOR = '한국항공대학교 컴퓨터공학과 24학번'
 - 자동로그인 지원
 - 멋진 CLI 및 프로그램 크레딧
 
-구현해야 하는 기능(v0.0.1a)
+구현해야 하는 기능(v0.1.0a)
 
 추후 구현할 기능
 - 업데이트 예고
 - 과제 남은기간 알림 기능
 - 스케줄러 활용한 프로그램 자동실행(특정 시간마다 확인 및 자동실행)
-- 파일 및 동영상 일괄 다운로드
+- 파일 및 동영상 일괄 다운로드 # no
 
 이후 할 일
 - 타 LMS 지원을 위한 프로그램 일반화
@@ -70,7 +70,7 @@ class DriverController: #드라이버 제어 클래스.
         try:
             service = Service(excutable_path=ChromeDriverManager().install())
         except:
-            traceback.format_exc()
+            print(traceback.format_exc())
             print('오류 발견됨. 인터넷 연결이 되어있는지 확인하세요.')
         options = uc.ChromeOptions()
         options.add_argument("--disable-extensions")
@@ -88,12 +88,12 @@ class DriverController: #드라이버 제어 클래스.
                 self.driver.implicitly_wait(15)
             else:
                 self.driver = webdriver.Chrome(service=service)
-        except Exception:
-            traceback.format_exc()
+        except:
+            print(traceback.format_exc())
             print('크롬 실행에 실패하였습니다. 자세한 사항은 프로그램 설명서를 참고하시고, 그래도 발생 시, 개발자에게 문의바랍니다.')
             input('엔터키를 눌러 종료합니다.')
 
-        print('로딩 성공! 히히')
+        print('로딩 성공!')
 
     def login(self): #LMS 로그인 함수
         print('LMS 사이트에서 로그인하시기 바랍니다.')
@@ -331,14 +331,38 @@ class DriverController: #드라이버 제어 클래스.
             main_window = self.driver.window_handles[0]
 
             self.driver.find_element(By.XPATH, '//*[@id="vod_player"]/div[2]/video').click()
-            time.sleep(video.video_length)
+            time.sleep(int(video.video_length*1.05))
+            self.driver.find_element(By.CLASS_NAME, 'vod_close_button').click()
+            self.driver.switch_to.alert.accept()
             video.isWatched = True
-            self.driver.close()
 
             self.driver.switch_to.window(main_window)
         Course.unwatched_video_list = []
         Course.save()
-        print('모든 영상을 시청완료하였습니다. 수고하셨습니다.')
+        print('모든 영상을 시청완료하였습니다')
+    
+    def test_watch(self, vid):
+        self.driver.get(vid)
+        wait = WebDriverWait(self.driver, 10)
+        second_button = wait.until(
+            EC.presence_of_element_located((By.XPATH, "//a[contains(text(),'동영상 보기')]")))
+        second_button.click()
+        video_window = self.driver.window_handles[1]
+        self.driver.switch_to.window(video_window)
+        time.sleep(0.5)
+        try:
+            alert = self.driver.switch_to.alert
+            alert.dismiss()
+        except:
+            pass
+        main_window = self.driver.window_handles[0]
+
+        self.driver.find_element(By.XPATH, '//*[@id="vod_player"]/div[2]/video').click()
+        time.sleep(600)
+        self.driver.quit()
+        
+        
+        
 
 
 def watch(dc):
@@ -354,9 +378,8 @@ def main():
     if not Course.course_list:
         isFirst = True
     else:
-        
         isFirst = False
-
+    
     if dc.isAutoVideo:
         watch(dc)
         input('아무 키를 눌러 종료합니다.')
