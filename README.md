@@ -56,6 +56,22 @@ KAU LMS를 편하게 시청할 수 있도록 도와줍니다.
 
 https://github.com/gusfhr777/Easy_Study
 
-컴파일 명령어 : pyinstaller -F -n=EasyStudy --icon="./eagle.ico" main.py 
+컴파일 명령어 : pyinstaller -F -n=EasyStudy --icon="./eagle.ico" main.py
+
+## 버전 v0.2.0a 추가 예정 기능(기말 이후 업데이트 예정)
+- 로그(버그 추적, 과정 기록) 및 데이터 출력 기능 추가
+- 특정 영상만 시청할 수 있는 기능
+- 미시청 상태 해결불가능한 영상(기간 지남 등 이유) 영상 필터링
+- 교수님 강의 미접속 시 크롤링 실패하는 버그 수정
+- 프로그램 안정성 개선
+- 프로그램 작동 효율 개선
+
+## 개발자에게 연락하기
+아이디어 제안 / 버그 수정 요청/ 불편사항 제보는 gkrgus777@kau.kr로 부탁드립니다. 
+
+버그를 발견하셨을 때, 다음과 같은 정보가 있어야 해결이 가능합니다.
+- 실행 영상
+- 웹사이트 소스코드 : 웹사이트에서 Ctrl + U를 누르면 볼 수 있습니다.
+- 추가 정보가 있으면 더욱 좋습니다. 운영체제, VPN 이용 여부, 버그 발생 조건이나 이유 등
 
 **Full Changelog**: https://github.com/gusfhr777/Easy_Study/commits/v0.1.0a
