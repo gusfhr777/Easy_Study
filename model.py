@@ -2,6 +2,13 @@ import pickle
 
 COURSE_LIST_FILENAME = 'courseData.pickle'
 UNWATCHED_VIDEO_FILENAME = 'unwatchedData.pickle'
+log_queue = []
+
+def getLogQueue():
+    global log_queue
+    l = log_queue
+    log_queue = []
+    return l
 
 class Activity:
     def __init__(self, title: str, link: str, datefrom:str, dateto:str):
@@ -20,8 +27,7 @@ class VideoActivity(Activity):
         self.isWatched = isWatched
 
 class FileActivity(Activity):
-    def __init__(self, title: str, link: str, datefrom: str, dateto: str, file_size: str,
-                 file_type=None):
+    def __init__(self, title: str, link: str, datefrom: str, dateto: str, file_size: str,file_type=None):
         super().__init__(title, link, datefrom, dateto)
         self.file_size = file_size
         self.file_type = file_type
@@ -76,21 +82,23 @@ class Course:
 
     @staticmethod
     def printCourse():
-        print('현재 수강중인 강의 목록')
+        txt = ''
+        txt += '현재 수강중인 강의 목록'
         for course in Course.course_list:
-            print(f'''강의명 {course.title}
+            txt += f'''강의명 {course.title}
 교수 {course.professor}
 링크 {course.link}
 강의 구분 {course.course_label}
 교과여부 {course.course_label_under}
-''')
+'''
             for week in course.week_list:
-                print(f'''{week.title}
-요약 : {week.summary}''')
+                txt += f'''{week.title}
+요약 : {week.summary}'''
                 for activity in week.activity_list:
-                    print(f'{activity.title} | 링크 : {activity.link} | 기간 : {activity.datefrom} ~ {activity.dateto}')
-                print()
-            print('\n----------------------------------\n')
+                    txt += (f'{activity.title} | 링크 : {activity.link} | 기간 : {activity.datefrom} ~ {activity.dateto}')
+                txt += '\n'
+            txt += ('\n----------------------------------\n')
+        return txt
 
     @staticmethod
     def save():
