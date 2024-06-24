@@ -1,6 +1,7 @@
 
 import datetime
 import time
+import threading
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
@@ -15,21 +16,29 @@ from model import *
 
 class DriverController: #드라이버 제어 클래스.
     def __init__(self):
-        self.isLogin = False
-        self.isAutoLogin = True # 자동로그인 여부. 2차 이후 가능.
-        self.isHandleLess = False #2차 이후 가능. not headless for this version v0.0.1a
-        self.isWatchAll = True # Check All Video for this version v0.0.1a
-
+        threading.Thread(target=self.__initThread).start()
+    
+    def __initThread(self):
         try:
-            with open('autoVideo.txt', 'r'):
-                self.isAutoVideo = True
+            self.isLogin = False
+            self.isAutoLogin = True # 자동로그인 여부. 2차 이후 가능.
+            self.isHandleLess = False #2차 이후 가능. not headless for this version v0.0.1a
+            self.isWatchAll = True # Check All Video for this version v0.0.1a
+
+            try:
+                with open('autoVideo.txt', 'r'):
+                    self.isAutoVideo = True
+            except:
+                self.isAutoVideo = False
+                
+            log_print('크롬 로딩중... 시간이 조금 걸려요')
+            self.__driverInit()
+            self.login()
         except:
-            self.isAutoVideo = False
-            
-        # self.__driverInit()
+            report(driver=self.driver)
+
 
     def __driverInit(self): #드라이버 초기화 함수
-        log_print('로딩중... 시간이 조금 걸려요')
         self.driver = None
         try:
             service = Service(excutable_path=ChromeDriverManager().install())
@@ -53,7 +62,7 @@ class DriverController: #드라이버 제어 클래스.
                 self.driver = webdriver.Chrome(service=service)
         except:
             report('크롬 실행에 실패하였습니다. 자세한 사항은 프로그램 설명서를 참고하시고, 그래도 발생 시, 개발자에게 문의바랍니다.')
-            input('엔터키를 눌러 종료합니다.')
+            
 
         log_print('로딩 성공!')
 
@@ -133,6 +142,8 @@ class DriverController: #드라이버 제어 클래스.
         return activity_list
 
     def __week_process(self, week_div, course): #강의 내 Week 처리 함수
+        if week_div == None:
+            return
         week_title = week_div.find('span', {'class': 'sectionname'}).text
         week_summary = week_div.find('div', {'class': 'summary'}).text
         week_week = len(course.week_list) + 1
@@ -166,7 +177,7 @@ class DriverController: #드라이버 제어 클래스.
                 break
             else:
                 continue
-        self.islogin = True
+        self.isLogin = True
         log_print('로그인 성공. 자동로그인을 원하는 경우, 비밀번호 저장 버튼을 눌러주세요.')
 
     def crawlCourseList(self): # 수강목록 리스트 크롤링 함수
@@ -207,11 +218,8 @@ class DriverController: #드라이버 제어 클래스.
             time.sleep(1.5)
             soup = BeautifulSoup(self.driver.page_source, 'html.parser')
 
-            try: #아직 교수자가 가상 강의실에 입장하지 않아 학생들에게 나타나지 않는 강좌입니다. 향후 교수자가 본 강의실에 입장하시면 자동으로 이용하실 수 있습니다.
-                soup.find('div',{'class':'error_message'})
+            if soup.find('div',{'class':'error_message'}):#아직 교수자가 가상 강의실에 입장하지 않아 학생들에게 나타나지 않는 강좌입니다. 향후 교수자가 본 강의실에 입장하시면 자동으로 이용하실 수 있습니다.
                 continue
-            except:
-                pass
 
             total_sections = soup.find('div', {'class': 'total_sections'})
             if 'topics' in total_sections.find('ul').attrs['class']:
@@ -235,7 +243,7 @@ class DriverController: #드라이버 제어 클래스.
             for course in Course.course_list: # find all video for this version v0.0.1a
                 log_print(course.title)
                 for video in course.getActivityList(VideoActivity):
-                    log_print('동영상 ', video.title)
+                    log_print('동영상 '+ video.title)
                     self.driver.get(video.link)
                     wait = WebDriverWait(self.driver, 10)
                     second_button = wait.until(EC.presence_of_element_located((By.XPATH, "//a[contains(text(),'동영상 보기')]")))
@@ -268,9 +276,12 @@ class DriverController: #드라이버 제어 클래스.
         Course.save()
         log_print('동영상 시청 여부 확인이 완료되었습니다.\n')
 
-    def watchUnwatchedVideo(self): #보지 않은 영상 시청 함수
+    def watchUnwatchedVideo(self, var_states): #보지 않은 영상 시청 함수
         log_print('영상 시청을 시작합니다.')
-        for video in Course.unwatched_video_list:
+        for i, video in enumerate(Course.unwatched_video_list):
+            var = var_states[i].get()
+            if not var:
+                continue
             video_timedelta = datetime.timedelta(seconds=video.video_length)
             if video_timedelta.seconds//3600 > 0:
                 hours, minutes, seconds = video.video_length//3600, (video.video_length%3600)//60, video.video_length%60

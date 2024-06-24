@@ -26,16 +26,18 @@ def __loggerInit():
 
 logger = __loggerInit()
 
-def log_print(txt):
+def log_print(txt='', end='\n'):
     logger.info(txt)
-    log_queue.append(txt)
+    log_queue.put(txt+end)
 
-def report(reason='', driver=None):
+def report(reason='프로그램 실행 중 오류가 발생하였습니다. logs폴더와 함께 개발자에게 문의하세요. 이메일 gkrgus777@kau.kr', driver=None):
     if driver:
-        with open('report.html') as f:
+        with open('logs/report.html', 'w', encoding='utf-8') as f:
             f.write(driver.page_source)
+            # print('driver printed.')
+            # print(driver.page_source)
 
     if reason:
-        log_queue.append(reason)
+        log_queue.put('\n\n버그 발생\n'+reason)
 
     logger.critical(traceback.format_exc())

@@ -1,7 +1,7 @@
 버그 모음
 1. alert가 떠 있으면 driver.window_handles 명령 실행 시, 무한도링
 
-pyinstaller -F -n=EasyStudy --icon="./eagle.ico" main.py 
+pyinstaller -F -n=EasyStudy --icon="./eagle.ico" --noconsole main.py
 
 
 

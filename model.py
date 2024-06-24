@@ -1,14 +1,12 @@
 import pickle
+import queue
 
 COURSE_LIST_FILENAME = 'courseData.pickle'
 UNWATCHED_VIDEO_FILENAME = 'unwatchedData.pickle'
-log_queue = []
+log_queue = queue.Queue()
 
 def getLogQueue():
-    global log_queue
-    l = log_queue
-    log_queue = []
-    return l
+    return log_queue
 
 class Activity:
     def __init__(self, title: str, link: str, datefrom:str, dateto:str):
@@ -106,7 +104,6 @@ class Course:
             pickle.dump(Course.course_list, f)
         with open(UNWATCHED_VIDEO_FILENAME, 'wb') as f:
             pickle.dump(Course.unwatched_video_list, f)
-        print('데이터 저장완료')
 
     @staticmethod
     def load():
@@ -119,7 +116,6 @@ class Course:
         except:
             with open(COURSE_LIST_FILENAME, 'wb'):pass
             with open(UNWATCHED_VIDEO_FILENAME, 'wb'):pass
-        print('데이터 불러오기 완료')
 
 
 class WeekSection:

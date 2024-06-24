@@ -7,13 +7,11 @@ import time
 import queue
 from loggingInterface import log_print, report
 from driverController import DriverController
-from model import getLogQueue, Course
+from model import getLogQueue, Course, log_queue
 VERSION = 'v0.2.1a'
-DATE = '2024-06-23(일)'
+DATE = '2024-06-25(화)'
 AUTHOR = '한국항공대학교 컴퓨터공학과'
 TITLE = f'편한수강 {VERSION}'
-state = '실행 중'
-
 
 
 # def backgroundTask():
@@ -29,16 +27,28 @@ state = '실행 중'
 #         dc.driver.quit()
 #         exit()
 
+class Controller:
+    def __init__(self):
+        pass
 
-class View:
+
+class View():
     def __init__(self):
         self.dc = DriverController()
-        self.state = '로딩중'
+        self.normalizeFirst = True # variable for 3 buttons enabling
         Course.load()
         # Initialize main window
         self.root = tk.Tk()
         self.root.title(TITLE)
         self.root.geometry("400x500")
+        self.root.iconbitmap("eagle.ico")
+
+        log_print(f'편한수강 {VERSION}\n제작 : {AUTHOR}\n본 프로그램은 항공대 LMS 전용입니다.')
+
+        self.isLoginString = tk.StringVar()
+        self.state = tk.StringVar()
+        self.isLoginString.set(f"{'로그인 완료' if self.dc.isLogin else '로그인 안됨'}")
+        self.state.set('대기 중')
 
         # Create the main frame for log output and buttons
         self.main_frame = ttk.Frame(self.root, padding="5")
@@ -46,71 +56,73 @@ class View:
 
         # Log output section
         # Log output section using a Text widget
-        self.log_text = tk.Text(self.main_frame, wrap='word', state=tk.DISABLED, relief="solid", width=40)
+        self.log_text = tk.Text(self.main_frame, wrap='word', bg='#f0f0f0', fg='#333333', font=('Helvetica', 10), state=tk.DISABLED, relief="solid", width=37, padx=10, pady=10, borderwidth=1)
         self.log_text.grid(row=0, column=0, rowspan=5, sticky="NSEW", padx=5, pady=5)
 
         # Variables section
         variables_frame = ttk.Frame(self.main_frame, relief="solid", padding="10")
         variables_frame.grid(row=0, column=1, sticky="NSEW", padx=5, pady=5)
 
-        state_label = ttk.Label(variables_frame, text=self.state)
+        state_label = ttk.Label(variables_frame, textvariable=self.state, wraplength=100)
         state_label.grid(row=0, column=0, sticky="W")
-        login_state_label = ttk.Label(variables_frame, text=f"{'로그인 완료' if self.dc.isLogin else '로그인 안됨'}")
-        login_state_label.grid(row=1, column=0, sticky="W")
+        self.login_state_label = ttk.Label(variables_frame, textvariable=self.isLoginString)
+        self.login_state_label.grid(row=1, column=0, sticky="W")
 
         # Buttons section
         self.button1 = ttk.Button(self.main_frame, text=f"LMS 불러오기", command=self.lmsCrawl)
-        self.button1.grid(row=1, column=1, sticky="NSEW", padx=5, pady=5)
-        self.button2 = ttk.Button(self.main_frame, text=f"동영상 시청", command=self.openVideoWatchOption)
-        self.button2.grid(row=2, column=1, sticky="NSEW", padx=5, pady=5)
+        self.button2 = ttk.Button(self.main_frame, text=f"동영상 시청", command=self.openWatchWindow)
         self.button3 = ttk.Button(self.main_frame, text=f"데이터 출력", command=self.printCourseData)
+
+        self.button1.config(state=tk.DISABLED)
+        self.button2.config(state=tk.DISABLED)
+        self.button3.config(state=tk.DISABLED)
+        
+        self.button1.grid(row=1, column=1, sticky="NSEW", padx=5, pady=5)
+        self.button2.grid(row=2, column=1, sticky="NSEW", padx=5, pady=5)
         self.button3.grid(row=3, column=1, sticky="NSEW", padx=5, pady=5)
 
         if Course.unwatched_video_list == []:
             self.button2.config(state=tk.DISABLED)
 
         # Option button
-        option_button = ttk.Button(self.main_frame, text="옵션")
-        option_button.grid(row=6, column=1, sticky="NSEW", padx=5, pady=5)
-        option_button.config(command=self.openOptionWindow)
+        # option_button = ttk.Button(self.main_frame, text="옵션")
+        # option_button.grid(row=6, column=1, sticky="NSEW", padx=5, pady=5)
+        # option_button.config(command=self.openOptionWindow)
 
         self.root.after(100, self.synchronize)
         self.root.mainloop()
 
     
     def synchronize(self): # model 데이터 동기화
-        log_queue = getLogQueue()
-        if log_queue:
+        while not log_queue.empty():
+            log = log_queue.get()
             self.log_text.config(state=tk.NORMAL)
-            for log in log_queue:
-                self.log_text.insert(tk.END, log + '\n')
+            self.log_text.insert(tk.END, log)
+            self.log_text.see(tk.END)
             self.log_text.config(state=tk.DISABLED)
+        if self.dc.isLogin:
+            self.isLoginString.set("로그인 완료")
+        if self.dc.driver and self.normalizeFirst:
+            self.button1.config(state=tk.NORMAL)
+            if Course.unwatched_video_list:
+                self.button2.config(state=tk.NORMAL)
+            self.button3.config(state=tk.NORMAL)
+            self.normalizeFirst = False
         self.root.after(100, self.synchronize)
-    
-    def lmsCrawl(self):
-        self.state = '로그인 중'
-        self.dc.login()
-        self.state = '강의 목록 확인중'
-        self.dc.crawlCourseList()
-        self.state = '강의 확인중'
-        self.dc.crawlCourse()
-        self.state = '안 본 영상 확인중'
-        self.dc.crawlUnWatched()
-        if Course.unwatched_video_list:
-            self.button2.config(state=tk.NORMAL)
         
 
-    def delOptionWindow(self):
-        self.dc.isAutoLogin = self.option_var1
-
+    def delOptionWindow(self): #옵션창 닫기
+        self.dc.isAutoLogin = self.option_var1.get()
         self.options_window.destroy()
         
 
-    def openOptionWindow(self):
+    def openOptionWindow(self): #옵션창 열기
 
         self.options_window = tk.Toplevel(self.root)
         self.options_window.title("옵션창")
         self.options_window.geometry("300x200")
+
+
         self.option_var1 = tk.BooleanVar()
         self.option_var1.set(self.dc.isAutoLogin)
         # option_var2 = tk.BooleanVar()
@@ -128,34 +140,74 @@ class View:
 
         confirm_button = ttk.Button(self.options_window, text="확인", command=self.delOptionWindow)
         confirm_button.grid(row=3, column=0, sticky="E", padx=10, pady=10)
-
-    def openVideoWatchOption(self):
-        video_window = tk.Toplevel(self.root)
-        video_window.title("동영상 시청")
-        video_window.geometry("300x200")
-
-        frame = ttk.Frame(video_window, padding=20)
-        frame.pack()
-        subframe = ttk.Frame(frame)
-        subframe.pack(side=tk.RIGHT)
+        self.options_window.grab_set()
         
-        var_states = []
+
+    def openWatchWindow(self): #동영상 창 열기
+        self.video_window = tk.Toplevel(self.root)
+        self.video_window.title("동영상 시청")
+        self.video_window.geometry("500x600")
+        
+        main_frame = ttk.Frame(self.video_window, relief="solid", padding=10)
+        # main_frame.grid(row=0, column=0, padx=5, pady=5)
+        main_frame.pack()
+        frame = ttk.Frame(main_frame, padding=10)
+        frame.grid(row=0, column=0, sticky="NSEW", padx=5, pady=5)
+        subframe = ttk.Frame(main_frame, padding="10")
+        subframe.grid(row=0, column=1, sticky="NSEW", padx=5, pady=5)
+        
+        self.var_states = []
         for video in Course.unwatched_video_list:
             var = tk.BooleanVar()
             var.set(True)
-            var_states.append(var)
-            label = ttk.Label(frame, text=video.title, anchor='w', width=15)
+            label = ttk.Label(frame, text=video.title, anchor='w')
             label.pack(anchor='w', pady=5)
-            
-            chk = ttk.Checkbutton(subframe, text='', variable=var)
+            chk = ttk.Checkbutton(subframe, text="", variable=var)
             chk.pack(anchor='e', pady=5)
-        confirm_button = ttk.Button(video_window, text="확인", command=self.watch)
+            self.var_states.append(var)
+        confirm_button = ttk.Button(self.video_window, text="확인", command=self.watch)
         confirm_button.pack(pady=10)
+        self.video_window.grab_set()
+
+    # def lmsLogin(self):
+    #     def background():
+    #         try:
+    #             self.state.set('로그인 중')
+    #             self.dc.login()
+    #         except:
+    #             report(reason='로그인 중 오류가 발생하였습니다. logs폴더와 함께 개발자에게 문의하세요. 이메일 gkrgus777@kau.kr', driver=self.dc.driver)
+    #     threading.Thread(target=background).start() 
+    def lmsCrawl(self): #LMS 데이터 불러오기 버튼
+        def background():
+            try:
+                self.button1.config(state=tk.DISABLED)
+                self.state.set('목록 확인중')
+                self.dc.crawlCourseList()
+                self.state.set('강의 확인중')
+                self.dc.crawlCourse()
+                self.state.set('영상 확인중')
+                self.dc.crawlUnWatched()
+                self.state.set('대기 중')
+                if Course.unwatched_video_list:
+                    self.button2.config(state=tk.NORMAL)
+                self.button1.config(state=tk.NORMAL)
+            except:
+                report(reason='LMS 데이터를 불러오는 중 오류가 발생하였습니다. logs폴더와 함께 개발자에게 문의하세요. 이메일 gkrgus777@kau.kr',driver=self.dc.driver)
+        threading.Thread(target=background).start()
 
     def watch(self):
-        self.state = '안 본 영상 시청 중'
-        self.dc.watchUnwatchedVideo()
-        self.state = '유휴 상태'
+        def background():
+            try:
+                self.button2.config(state=tk.DISABLED)
+                self.state.set('영상 시청 중')
+                self.dc.watchUnwatchedVideo(self.var_states)
+                self.state.set('대기 중')
+                self.button2.config(state=tk.NORMAL)
+            except:
+                report(reason='동영상 시청 중 오류가 발생하였습니다. logs폴더와 함께 개발자에게 문의하세요. 이메일 gkrgus777@kau.kr',driver=self.dc.driver)
+                
+        self.video_window.destroy()
+        threading.Thread(target=background).start()
 
     def printCourseData(self):
         if not os.path.exists('./output'):
@@ -167,4 +219,7 @@ class View:
 
 
 def main():
-    view = View()
+    try:
+        view = View()
+    except:
+        report()
