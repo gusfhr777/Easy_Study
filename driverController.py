@@ -2,6 +2,7 @@
 import datetime
 import time
 import threading
+import os
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
@@ -10,6 +11,8 @@ from selenium.webdriver.support import expected_conditions as EC
 import undetected_chromedriver as uc
 from webdriver_manager.chrome import ChromeDriverManager
 from bs4 import BeautifulSoup
+import m3u8_To_MP4
+
 
 from loggingInterface import log_print, report
 from model import *
@@ -251,6 +254,7 @@ class DriverController: #드라이버 제어 클래스.
                     video_window = self.driver.window_handles[1]
                     self.driver.switch_to.window(video_window)
                     time.sleep(0.5)
+                    
                     try:
                         alert = self.driver.switch_to.alert
                         alert.dismiss()
@@ -261,7 +265,12 @@ class DriverController: #드라이버 제어 클래스.
                     # script = f"window.open('{video.link}', 'VodContentWindow','toolbar=0,scrollbars=0,location=0,menubar=0,status=0,width=1005,height=755');return false;"
                     # self.driver.execute_script(script)
 
-                    soup = BeautifulSoup(self.driver.page_source, 'html.parser')
+
+                    page = self.driver.page_source
+                    location = page.find('https://fcbjngaswqol4996171.cdn.ntruss.com')
+                    m3u8 = page[location:location+139]
+                    video.m3u8 = m3u8
+                    soup = BeautifulSoup(page, 'html.parser')
                     close_message = soup.find('div', {'class': 'window_close_message'})
 
                     if close_message:
@@ -319,6 +328,24 @@ class DriverController: #드라이버 제어 클래스.
         Course.save()
         log_print('모든 영상을 시청완료하였습니다')
     
+    def downloadVideo(self, var_states):
+        if not os.path.exists('./output/'):os.mkdir('./output/')
+        log_print('\n동영상 다운로드를 시작합니다.')
+        for i, video in enumerate(Course.getAllActivityList(VideoActivity)):
+            if not var_states[i].get(): continue
+            for course in Course.course_list:
+                if video in course.getActivityList(VideoActivity):
+                    subject_name = course.title
+            file_dir = './output/' + subject_name + '/'
+            if not os.path.exists(file_dir):os.mkdir(file_dir)
+            log_print('다운로드 중 : '+video.title)
+            m3u8_To_MP4.multithread_download(m3u8_uri=video.m3u8, mp4_file_dir=file_dir, mp4_file_name=video.title)
+
+
+
+
+            
+
     # def test_watch(self, vid):
     #     self.driver.get(vid)
     #     wait = WebDriverWait(self.driver, 10)

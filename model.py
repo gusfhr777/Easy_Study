@@ -19,10 +19,11 @@ class Activity:
         return self.title
 
 class VideoActivity(Activity):
-    def __init__(self, title: str, link: str, datefrom:str, dateto:str, video_length=None, isWatched=None):
+    def __init__(self, title: str, link: str, datefrom:str, dateto:str, video_length=None, isWatched=None, m3u8 = None):
         super().__init__(title, link, datefrom, dateto)
         self.video_length = video_length
         self.isWatched = isWatched
+        self.m3u8 = m3u8
 
 class FileActivity(Activity):
     def __init__(self, title: str, link: str, datefrom: str, dateto: str, file_size: str,file_type=None):

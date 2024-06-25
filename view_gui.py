@@ -7,8 +7,8 @@ import time
 import queue
 from loggingInterface import log_print, report
 from driverController import DriverController
-from model import getLogQueue, Course, log_queue
-VERSION = 'v0.2.1a'
+from model import getLogQueue, Course, log_queue, VideoActivity
+VERSION = 'v0.2.2a'
 DATE = '2024-06-25(화)'
 AUTHOR = '한국항공대학교 컴퓨터공학과'
 TITLE = f'편한수강 {VERSION}'
@@ -27,6 +27,16 @@ TITLE = f'편한수강 {VERSION}'
 #         dc.driver.quit()
 #         exit()
 
+"""
+해야할 일
+영상 다운로드 기능
+- m3u8 링크 가져오도록 crawlUnWatched 함수, model.VideoActivity 수정
+- m3u8 to mp4 모듈 활용해서 m3u8 다운로드 함수 실행.
+- 다운로드를 위한 GUI 인터페이스 제작 
+- 테스트, 테스트, 테스트, .... 언제 다하냐
+"""
+
+
 class Controller:
     def __init__(self):
         pass
@@ -41,8 +51,9 @@ class View():
         self.root = tk.Tk()
         self.root.title(TITLE)
         self.root.geometry("400x500")
-        self.root.iconbitmap("eagle.ico")
-
+        try:
+            self.root.iconbitmap("eagle.ico")
+        except:pass
         log_print(f'편한수강 {VERSION}\n제작 : {AUTHOR}\n본 프로그램은 항공대 LMS 전용입니다.')
 
         self.isLoginString = tk.StringVar()
@@ -71,15 +82,18 @@ class View():
         # Buttons section
         self.button1 = ttk.Button(self.main_frame, text=f"LMS 불러오기", command=self.lmsCrawl)
         self.button2 = ttk.Button(self.main_frame, text=f"동영상 시청", command=self.openWatchWindow)
-        self.button3 = ttk.Button(self.main_frame, text=f"데이터 출력", command=self.printCourseData)
+        self.button3 = ttk.Button(self.main_frame, text=f"동영상 다운로드", command=self.opendownloadWindow)
+        self.button4 = ttk.Button(self.main_frame, text=f"데이터 출력", command=self.printCourseData)
 
         self.button1.config(state=tk.DISABLED)
         self.button2.config(state=tk.DISABLED)
         self.button3.config(state=tk.DISABLED)
+        self.button4.config(state=tk.DISABLED)
         
         self.button1.grid(row=1, column=1, sticky="NSEW", padx=5, pady=5)
         self.button2.grid(row=2, column=1, sticky="NSEW", padx=5, pady=5)
         self.button3.grid(row=3, column=1, sticky="NSEW", padx=5, pady=5)
+        self.button4.grid(row=4, column=1, sticky="NSEW", padx=5, pady=5)
 
         if Course.unwatched_video_list == []:
             self.button2.config(state=tk.DISABLED)
@@ -106,7 +120,10 @@ class View():
             self.button1.config(state=tk.NORMAL)
             if Course.unwatched_video_list:
                 self.button2.config(state=tk.NORMAL)
-            self.button3.config(state=tk.NORMAL)
+            if Course.getAllActivityList(VideoActivity):
+                self.button3.config(state=tk.NORMAL)
+
+            self.button4.config(state=tk.NORMAL)
             self.normalizeFirst = False
         self.root.after(100, self.synchronize)
         
@@ -143,7 +160,7 @@ class View():
         self.options_window.grab_set()
         
 
-    def openWatchWindow(self): #동영상 창 열기
+    def openWatchWindow(self): #동영상 시청 창 열기
         self.video_window = tk.Toplevel(self.root)
         self.video_window.title("동영상 시청")
         self.video_window.geometry("500x600")
@@ -151,31 +168,110 @@ class View():
         main_frame = ttk.Frame(self.video_window, relief="solid", padding=10)
         # main_frame.grid(row=0, column=0, padx=5, pady=5)
         main_frame.pack()
-        frame = ttk.Frame(main_frame, padding=10)
-        frame.grid(row=0, column=0, sticky="NSEW", padx=5, pady=5)
-        subframe = ttk.Frame(main_frame, padding="10")
-        subframe.grid(row=0, column=1, sticky="NSEW", padx=5, pady=5)
-        
-        self.var_states = []
-        for video in Course.unwatched_video_list:
-            var = tk.BooleanVar()
-            var.set(True)
-            label = ttk.Label(frame, text=video.title, anchor='w')
-            label.pack(anchor='w', pady=5)
-            chk = ttk.Checkbutton(subframe, text="", variable=var)
-            chk.pack(anchor='e', pady=5)
-            self.var_states.append(var)
-        confirm_button = ttk.Button(self.video_window, text="확인", command=self.watch)
-        confirm_button.pack(pady=10)
-        self.video_window.grab_set()
 
+        self.canvas = tk.Canvas(main_frame)
+        self.scrollbar = ttk.Scrollbar(main_frame, orient="vertical", command=self.canvas.yview)
+        self.scrollable_frame = tk.Frame(self.canvas)
+
+        self.scrollable_frame.bind(
+            "<Configure>",
+            lambda e: self.canvas.configure(
+                scrollregion=self.canvas.bbox("all")
+            )
+        )
+
+        self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="n")
+        self.canvas.configure(yscrollcommand=self.scrollbar.set)
+
+        self.canvas.pack(side="left", fill="both", expand=True)
+        self.scrollbar.pack(side="right", fill="y")
+
+        self.video_var_states = []
+
+        for i, item in enumerate(Course.unwatched_video_list):
+            var = tk.BooleanVar(value=True)
+            cb = ttk.Checkbutton(self.scrollable_frame, text=item.title, variable=var)
+            cb.grid(row=i, column=0, sticky='w')
+            self.video_var_states.append(var)
+        # frame = ttk.Frame(main_frame, padding=10)
+        # frame.grid(row=0, column=0, sticky="NSEW", padx=5, pady=5)
+        # subframe = ttk.Frame(main_frame, padding="10")
+        # subframe.grid(row=0, column=1, sticky="NSEW", padx=5, pady=5)
+        
+        # self.video_var_states = []
+        # for video in Course.unwatched_video_list:
+        #     var = tk.BooleanVar()
+        #     var.set(True)
+        #     label = ttk.Label(frame, text=video.title, anchor='w')
+        #     label.pack(anchor='w', pady=5)
+        #     chk = ttk.Checkbutton(subframe, text="", variable=var)
+        #     chk.pack(anchor='e', pady=5)
+        #     self.video_var_states.append(var)
+        # confirm_button = ttk.Button(self.video_window, text="확인", command=self.watch)
+        # confirm_button.pack(pady=10)
+        # self.video_window.grab_set()
+
+    def opendownloadWindow(self): #동영상 다운로드 창 열기
+        self.download_window = tk.Toplevel(self.root)
+        self.download_window.title("동영상 다운로드")
+        self.download_window.geometry("500x600")
+        
+        main_frame = ttk.Frame(self.download_window, relief="solid", padding=10)
+        # main_frame.grid(row=0, column=0, padx=5, pady=5)
+        main_frame.grid(row=0, column=0, padx=5, pady=5, sticky='n')
+
+        self.canvas = tk.Canvas(main_frame)
+        self.scrollbar = ttk.Scrollbar(main_frame, orient="vertical", command=self.canvas.yview)
+        self.scrollable_frame = tk.Frame(self.canvas)
+
+        self.scrollable_frame.bind(
+            "<Configure>",
+            lambda e: self.canvas.configure(
+                scrollregion=self.canvas.bbox("all")
+            )
+        )
+
+        self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="n")
+        self.canvas.configure(yscrollcommand=self.scrollbar.set)
+
+        self.canvas.pack(side="left", fill="both", expand=True)
+        self.scrollbar.pack(side="right", fill="y")
+
+        self.video_var_states = []
+
+        for i, item in enumerate(Course.getAllActivityList(VideoActivity)):
+            var = tk.BooleanVar(value=True)
+            cb = ttk.Checkbutton(self.scrollable_frame, text=item.title, variable=var)
+            cb.grid(row=i, column=0, sticky='w')
+            self.video_var_states.append(var)
+
+
+
+        # frame = ttk.Frame(main_frame, padding=10)
+        # frame.grid(row=0, column=0, sticky="NSEW", padx=5, pady=5)
+        # subframe = ttk.Frame(main_frame, padding="10")
+        # subframe.grid(row=0, column=1, sticky="NSEW", padx=5, pady=5)
+        
+        # self.var_states = []
+        # for video in Course.getAllActivityList(VideoActivity):
+        #     var = tk.BooleanVar()
+        #     var.set(True)
+        #     label = ttk.Label(frame, text=video.title, anchor='w')
+        #     label.pack(anchor='w', pady=5)
+        #     chk = ttk.Checkbutton(subframe, text="", variable=var)
+        #     chk.pack(anchor='e', pady=5)
+        #     self.var_states.append(var)
+        confirm_button = ttk.Button(self.download_window, text="확인", command=self.download)
+        confirm_button.grid(row=1, column=0, pady=10)
+        # confirm_button.grid(row=1, column=0, pady=10)
+        self.download_window.grab_set()
     # def lmsLogin(self):
     #     def background():
     #         try:
     #             self.state.set('로그인 중')
     #             self.dc.login()
     #         except:
-    #             report(reason='로그인 중 오류가 발생하였습니다. logs폴더와 함께 개발자에게 문의하세요. 이메일 gkrgus777@kau.kr', driver=self.dc.driver)
+    #             report(reason='로그인 중 오류가 발생하였습니다. logs폴더와 함께 개발자에게 문의하세요.', driver=self.dc.driver)
     #     threading.Thread(target=background).start() 
     def lmsCrawl(self): #LMS 데이터 불러오기 버튼
         def background():
@@ -191,8 +287,21 @@ class View():
                 if Course.unwatched_video_list:
                     self.button2.config(state=tk.NORMAL)
                 self.button1.config(state=tk.NORMAL)
+                self.normalizeFirst = True
             except:
-                report(reason='LMS 데이터를 불러오는 중 오류가 발생하였습니다. logs폴더와 함께 개발자에게 문의하세요. 이메일 gkrgus777@kau.kr',driver=self.dc.driver)
+                report(reason='LMS 데이터를 불러오는 중 오류가 발생하였습니다. logs폴더와 함께 개발자에게 문의하세요.',driver=self.dc.driver)
+        threading.Thread(target=background).start()
+
+    def download(self):
+        def background():
+            try:
+                self.state.set('다운로드 중')
+                self.dc.downloadVideo(self.video_var_states)
+                log_print('모든 다운로드가 완료되었습니다.')
+                self.state.set('대기 중')
+            except:
+                report('다운로드 중 오류가 발생하였습니다. logs폴더와 함꼐 개발자에게 문의하세요.')
+        self.download_window.destroy()
         threading.Thread(target=background).start()
 
     def watch(self):
@@ -204,7 +313,7 @@ class View():
                 self.state.set('대기 중')
                 self.button2.config(state=tk.NORMAL)
             except:
-                report(reason='동영상 시청 중 오류가 발생하였습니다. logs폴더와 함께 개발자에게 문의하세요. 이메일 gkrgus777@kau.kr',driver=self.dc.driver)
+                report(reason='동영상 시청 중 오류가 발생하였습니다. logs폴더와 함께 개발자에게 문의하세요.',driver=self.dc.driver)
                 
         self.video_window.destroy()
         threading.Thread(target=background).start()
