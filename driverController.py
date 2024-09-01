@@ -328,18 +328,6 @@ class DriverController: #드라이버 제어 클래스.
         Course.save()
         log_print('모든 영상을 시청완료하였습니다')
     
-    def downloadVideo(self, var_states):
-        if not os.path.exists('./output/'):os.mkdir('./output/')
-        log_print('\n동영상 다운로드를 시작합니다.')
-        for i, video in enumerate(Course.getAllActivityList(VideoActivity)):
-            if not var_states[i].get(): continue
-            for course in Course.course_list:
-                if video in course.getActivityList(VideoActivity):
-                    subject_name = course.title
-            file_dir = './output/' + subject_name + '/'
-            if not os.path.exists(file_dir):os.mkdir(file_dir)
-            log_print('다운로드 중 : '+video.title)
-            m3u8_To_MP4.multithread_download(m3u8_uri=video.m3u8, mp4_file_dir=file_dir, mp4_file_name=video.title)
 
 
 

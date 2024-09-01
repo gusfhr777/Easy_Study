@@ -5,11 +5,12 @@ import sys
 import os
 import time
 import queue
+import m3u8_To_MP4
 from loggingInterface import log_print, report
 from driverController import DriverController
 from model import getLogQueue, Course, log_queue, VideoActivity
-VERSION = 'v0.2.2a'
-DATE = '2024-06-25(화)'
+VERSION = 'v0.2.3a'
+DATE = '2024-09-01(일)'
 AUTHOR = '한국항공대학교 컴퓨터공학과'
 TITLE = f'편한수강 {VERSION}'
 
@@ -36,6 +37,24 @@ TITLE = f'편한수강 {VERSION}'
 - 테스트, 테스트, 테스트, .... 언제 다하냐
 """
 
+
+
+        # while not log_queue.empty():
+        #     log = log_queue.get()
+        #     self.log_text.config(state=tk.NORMAL)
+        #     self.log_text.insert(tk.END, log)
+        #     self.log_text.see(tk.END)
+        #     self.log_text.config(state=tk.DISABLED)
+
+class TextRedirector:
+    def __init__(self, text_widget):
+        self.text_widget = text_widget
+
+    def write(self, message):
+        pass
+
+    def flush(self):
+        pass  # `flush` 메서드는 파일 객체에서 필요하지만, 여기서는 빈 메서드로 유지
 
 class Controller:
     def __init__(self):
@@ -69,6 +88,7 @@ class View():
         # Log output section using a Text widget
         self.log_text = tk.Text(self.main_frame, wrap='word', bg='#f0f0f0', fg='#333333', font=('Helvetica', 10), state=tk.DISABLED, relief="solid", width=37, padx=10, pady=10, borderwidth=1)
         self.log_text.grid(row=0, column=0, rowspan=5, sticky="NSEW", padx=5, pady=5)
+        sys.stdout = TextRedirector(self.log_text)
 
         # Variables section
         variables_frame = ttk.Frame(self.main_frame, relief="solid", padding="10")
@@ -112,7 +132,7 @@ class View():
             log = log_queue.get()
             self.log_text.config(state=tk.NORMAL)
             self.log_text.insert(tk.END, log)
-            self.log_text.see(tk.END)
+            self.log_text.see(tk.END)  # 항상 스크롤을 최신 내용으로 유지
             self.log_text.config(state=tk.DISABLED)
         if self.dc.isLogin:
             self.isLoginString.set("로그인 완료")
@@ -167,32 +187,39 @@ class View():
         
         main_frame = ttk.Frame(self.video_window, relief="solid", padding=10)
         # main_frame.grid(row=0, column=0, padx=5, pady=5)
-        main_frame.pack()
+        main_frame.grid(row=0, column=0, padx=5, pady=5, sticky='n')
+        # main_frame.pack()
 
-        self.canvas = tk.Canvas(main_frame)
-        self.scrollbar = ttk.Scrollbar(main_frame, orient="vertical", command=self.canvas.yview)
-        self.scrollable_frame = tk.Frame(self.canvas)
+        canvas = tk.Canvas(main_frame)
+        scrollbar = ttk.Scrollbar(main_frame, orient="vertical", command=canvas.yview)
+        scrollable_frame = tk.Frame(canvas)
 
-        self.scrollable_frame.bind(
+        scrollable_frame.bind(
             "<Configure>",
-            lambda e: self.canvas.configure(
-                scrollregion=self.canvas.bbox("all")
+            lambda e: canvas.configure(
+                scrollregion=canvas.bbox("all")
             )
         )
 
-        self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="n")
-        self.canvas.configure(yscrollcommand=self.scrollbar.set)
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="n")
+        canvas.configure(yscrollcommand=scrollbar.set)
 
-        self.canvas.pack(side="left", fill="both", expand=True)
-        self.scrollbar.pack(side="right", fill="y")
-
-        self.video_var_states = []
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+        self.watch_video_var_states = []
 
         for i, item in enumerate(Course.unwatched_video_list):
             var = tk.BooleanVar(value=True)
-            cb = ttk.Checkbutton(self.scrollable_frame, text=item.title, variable=var)
+            cb = ttk.Checkbutton(scrollable_frame, text=item.title, variable=var)
             cb.grid(row=i, column=0, sticky='w')
-            self.video_var_states.append(var)
+            self.watch_video_var_states.append(var)
+
+
+        confirm_button = ttk.Button(self.video_window, text="확인", command=self.watch)
+        confirm_button.grid(row=1, column=0, pady=10)
+        # confirm_button.grid(row=1, column=0, pady=10)
+        self.video_window.grab_set()
+
         # frame = ttk.Frame(main_frame, padding=10)
         # frame.grid(row=0, column=0, sticky="NSEW", padx=5, pady=5)
         # subframe = ttk.Frame(main_frame, padding="10")
@@ -220,30 +247,30 @@ class View():
         # main_frame.grid(row=0, column=0, padx=5, pady=5)
         main_frame.grid(row=0, column=0, padx=5, pady=5, sticky='n')
 
-        self.canvas = tk.Canvas(main_frame)
-        self.scrollbar = ttk.Scrollbar(main_frame, orient="vertical", command=self.canvas.yview)
-        self.scrollable_frame = tk.Frame(self.canvas)
+        canvas = tk.Canvas(main_frame)
+        scrollbar = ttk.Scrollbar(main_frame, orient="vertical", command=canvas.yview)
+        scrollable_frame = tk.Frame(canvas)
 
-        self.scrollable_frame.bind(
+        scrollable_frame.bind(
             "<Configure>",
-            lambda e: self.canvas.configure(
-                scrollregion=self.canvas.bbox("all")
+            lambda e: canvas.configure(
+                scrollregion=canvas.bbox("all")
             )
         )
 
-        self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="n")
-        self.canvas.configure(yscrollcommand=self.scrollbar.set)
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="n")
+        canvas.configure(yscrollcommand=scrollbar.set)
 
-        self.canvas.pack(side="left", fill="both", expand=True)
-        self.scrollbar.pack(side="right", fill="y")
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
 
-        self.video_var_states = []
+        self.download_video_var_states = []
 
         for i, item in enumerate(Course.getAllActivityList(VideoActivity)):
             var = tk.BooleanVar(value=True)
-            cb = ttk.Checkbutton(self.scrollable_frame, text=item.title, variable=var)
+            cb = ttk.Checkbutton(scrollable_frame, text=item.title, variable=var)
             cb.grid(row=i, column=0, sticky='w')
-            self.video_var_states.append(var)
+            self.download_video_var_states.append(var)
 
 
 
@@ -296,7 +323,18 @@ class View():
         def background():
             try:
                 self.state.set('다운로드 중')
-                self.dc.downloadVideo(self.video_var_states)
+                if not os.path.exists('./output/'):os.mkdir('./output/')
+                log_print('\n동영상 다운로드를 시작합니다.')
+                for i, video in enumerate(Course.getAllActivityList(VideoActivity)):
+                    if not self.download_video_var_states[i].get(): continue
+                    for course in Course.course_list:
+                        if video in course.getActivityList(VideoActivity):
+                            subject_name = course.title
+                    file_dir = './output/' + subject_name + '/'
+                    if not os.path.exists(file_dir):os.mkdir(file_dir)
+                    log_print('다운로드 중 : '+video.title)
+                    log_print(f"{video.m3u8}|{file_dir}|{video.title}")
+                    m3u8_To_MP4.multithread_download(m3u8_uri=video.m3u8, mp4_file_dir=file_dir, mp4_file_name=video.title)
                 log_print('모든 다운로드가 완료되었습니다.')
                 self.state.set('대기 중')
             except:
@@ -309,7 +347,7 @@ class View():
             try:
                 self.button2.config(state=tk.DISABLED)
                 self.state.set('영상 시청 중')
-                self.dc.watchUnwatchedVideo(self.var_states)
+                self.dc.watchUnwatchedVideo(self.watch_video_var_states)
                 self.state.set('대기 중')
                 self.button2.config(state=tk.NORMAL)
             except:
