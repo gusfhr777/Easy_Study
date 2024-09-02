@@ -9,11 +9,11 @@ import m3u8_To_MP4
 from loggingInterface import log_print, report
 from driverController import DriverController
 from model import getLogQueue, Course, log_queue, VideoActivity
-VERSION = 'v0.2.3a'
-DATE = '2024-09-01(일)'
+VERSION = 'v0.2.4a'
+DATE = '2024-09-02(월)'
 AUTHOR = '한국항공대학교 컴퓨터공학과'
 TITLE = f'편한수강 {VERSION}'
-
+# 코드 누더기 상태 : 78%
 
 # def backgroundTask():
     
@@ -30,11 +30,7 @@ TITLE = f'편한수강 {VERSION}'
 
 """
 해야할 일
-영상 다운로드 기능
-- m3u8 링크 가져오도록 crawlUnWatched 함수, model.VideoActivity 수정
-- m3u8 to mp4 모듈 활용해서 m3u8 다운로드 함수 실행.
-- 다운로드를 위한 GUI 인터페이스 제작 
-- 테스트, 테스트, 테스트, .... 언제 다하냐
+버그고치기
 """
 
 

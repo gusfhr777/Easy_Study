@@ -8,6 +8,7 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import NoAlertPresentException
 import undetected_chromedriver as uc
 from webdriver_manager.chrome import ChromeDriverManager
 from bs4 import BeautifulSoup
@@ -258,7 +259,7 @@ class DriverController: #드라이버 제어 클래스.
                     try:
                         alert = self.driver.switch_to.alert
                         alert.dismiss()
-                    except:
+                    except NoAlertPresentException:
                         pass
                     main_window = self.driver.window_handles[0]
                     # time.sleep(10)
@@ -307,23 +308,33 @@ class DriverController: #드라이버 제어 클래스.
             second_button = wait.until(
                 EC.presence_of_element_located((By.XPATH, "//a[contains(text(),'동영상 보기')]")))
             second_button.click()
+            main_window = self.driver.window_handles[0]
             video_window = self.driver.window_handles[1]
             self.driver.switch_to.window(video_window)
             time.sleep(0.5)
             try:
                 alert = self.driver.switch_to.alert
                 alert.dismiss()
-            except:
+            except NoAlertPresentException:
                 pass
-            main_window = self.driver.window_handles[0]
+            # log_print('1')
 
             self.driver.find_element(By.XPATH, '//*[@id="vod_player"]/div[2]/video').click()
-            time.sleep(int(video.video_length*1.05))
+            # log_print('2')
+            time.sleep(int(video.video_length))
+            # log_print('3')
             self.driver.find_element(By.CLASS_NAME, 'vod_close_button').click()
-            self.driver.switch_to.alert.accept()
+            # log_print('4')
+            try:
+                alert = self.driver.switch_to.alert
+                alert.accept()
+            except NoAlertPresentException:
+                pass
+            # log_print('5')
             video.isWatched = True
 
             self.driver.switch_to.window(main_window)
+            # log_print('6')
         Course.unwatched_video_list = []
         Course.save()
         log_print('모든 영상을 시청완료하였습니다')
