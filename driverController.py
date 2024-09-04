@@ -75,7 +75,6 @@ class DriverController: #드라이버 제어 클래스.
 
         for activity_div in activity_list_div:
             #preprocess for title
-            activity_div.find('span', {'class':'instancename'})
             instancename = activity_div.find('span', {'class':'instancename'}) # 제목 span. 내부 span에 activity type이 적혀있는 경우가 있어서 제거한다.
             if instancename == None: #아무 링크 없는 일반 텍스트.
                 continue
@@ -95,7 +94,13 @@ class DriverController: #드라이버 제어 클래스.
                     activity_datefrom, activity_dateto = '기간 제한 없음', '기간 제한 없음'
             else: #activity type URL. pass for this version 0.0.1a
                 continue
-            activity_link = activity_div.find('div', {'class':'activityinstance'}).find('a').attrs['href']
+
+            
+            activity_link_tag = activity_div.find('div', {'class':'activityinstance'}).find('a')
+            if activity_link_tag != None:
+                activity_link = activity_link_tag.attrs['href']
+            else: #No link activity or video opened for future. pass for this version v0.2.5a
+                continue 
 
             if 'ubfile' in activity_div.attrs['class']: #ubfile
                 text_info = activity_div.find('span', {'class': 'displayoptions'}).find('span', {'class': 'text-info'}).text.strip()
