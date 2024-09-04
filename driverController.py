@@ -8,7 +8,7 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import NoAlertPresentException
+from selenium.common.exceptions import NoAlertPresentException, NoSuchWindowException
 import undetected_chromedriver as uc
 from webdriver_manager.chrome import ChromeDriverManager
 from bs4 import BeautifulSoup
@@ -259,7 +259,7 @@ class DriverController: #드라이버 제어 클래스.
                     try:
                         alert = self.driver.switch_to.alert
                         alert.dismiss()
-                    except NoAlertPresentException:
+                    except (NoAlertPresentException, NoSuchWindowException):
                         pass
                     main_window = self.driver.window_handles[0]
                     # time.sleep(10)
@@ -315,7 +315,7 @@ class DriverController: #드라이버 제어 클래스.
             try:
                 alert = self.driver.switch_to.alert
                 alert.dismiss()
-            except NoAlertPresentException:
+            except (NoAlertPresentException,NoSuchWindowException):
                 pass
             # log_print('1')
 
@@ -328,7 +328,7 @@ class DriverController: #드라이버 제어 클래스.
             try:
                 alert = self.driver.switch_to.alert
                 alert.accept()
-            except NoAlertPresentException:
+            except (NoAlertPresentException, NoSuchWindowException):
                 pass
             # log_print('5')
             video.isWatched = True
