@@ -7,7 +7,7 @@
 
 KAU LMS를 편하게 시청할 수 있도록 도와줍니다. 본 프로그램은 항공대 LMS 전용이며, 항공대 공식 프로그램이 아닙니다.
 
-다운로드 : https://github.com/gusfhr777/Easy_Study/releases/tag/v0.2.3a
+다운로드 : https://github.com/gusfhr777/Easy_Study/releases
 
 # 프로그램 기능
 - 영상 자동 시청 -> 배속 락 해제, 동영상 연속 시청
