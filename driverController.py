@@ -28,12 +28,13 @@ class DriverController: #드라이버 제어 클래스.
             self.isAutoLogin = True # 자동로그인 여부. 2차 이후 가능.
             self.isHandleLess = False #2차 이후 가능. not headless for this version v0.0.1a
             self.isWatchAll = True # Check All Video for this version v0.0.1a
+            self.isAutoVideo = False # pass for this version v0.2.6a
 
             try:
                 with open('autoVideo.txt', 'r'):
                     self.isAutoVideo = True
             except:
-                self.isAutoVideo = False
+                pass
                 
             log_print('크롬 로딩중... 시간이 조금 걸려요')
             self.__driverInit()

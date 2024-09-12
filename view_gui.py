@@ -9,8 +9,8 @@ import m3u8_To_MP4
 from loggingInterface import log_print, report
 from driverController import DriverController
 from model import getLogQueue, Course, log_queue, VideoActivity
-VERSION = 'v0.2.5a'
-DATE = '2024-09-04(수)'
+VERSION = 'v0.2.6a'
+DATE = '2024-09-12(목)'
 AUTHOR = '한국항공대학교 컴퓨터공학과'
 TITLE = f'편한수강 {VERSION}'
 # 코드 누더기 상태 : 78%
@@ -62,6 +62,15 @@ class View():
         self.dc = DriverController()
         self.normalizeFirst = True # variable for 3 buttons enabling
         Course.load()
+        self.course_vars = [] # 과목에 대한 체크박스가 저장된다.
+        self.video_vars = [] # VideoActivity 체크박스가 저장되는 이차원 리스트
+        
+
+        # ffmpeg check
+        if not os.path.isfile('ffmpeg.exe'):
+            log_print('경고 : ffmpeg.exe 파일 없음. 다운로드 기능이 불가능합니다.')
+
+
         # Initialize main window
         self.root = tk.Tk()
         self.root.title(TITLE)
@@ -86,6 +95,7 @@ class View():
         self.log_text.grid(row=0, column=0, rowspan=5, sticky="NSEW", padx=5, pady=5)
         sys.stdout = TextRedirector(self.log_text)
 
+        
         # Variables section
         variables_frame = ttk.Frame(self.main_frame, relief="solid", padding="10")
         variables_frame.grid(row=0, column=1, sticky="NSEW", padx=5, pady=5)
@@ -233,12 +243,29 @@ class View():
         # confirm_button = ttk.Button(self.video_window, text="확인", command=self.watch)
         # confirm_button.pack(pady=10)
         # self.video_window.grab_set()
+    
 
     def opendownloadWindow(self): #동영상 다운로드 창 열기
+        row = 0
+        def createdownloadCheckcbox(course_number):
+            nonlocal row, scrollable_frame, self, course_var
+            row += 1
+            course_checkbox = ttk.Checkbutton(scrollable_frame, text=course.title, command= lambda: self.toggleAllCheckBox(course_number), variable=course_var)
+            course_checkbox.grid(row=row, column=0, sticky='w')
+            for activity in activity_list:
+                row += 1
+                var = tk.BooleanVar(value=True)
+                self.video_vars[course_number].append(var)
+                # log_print(self.video_vars[i])
+                cb = ttk.Checkbutton(scrollable_frame, text=activity.title, variable=var)
+                cb.grid(row=row, column=0, sticky='w')
+                # self.download_video_var_states.append(var)
+            # log_print(self.video_vars[course_number])
+            row += 1
+
         self.download_window = tk.Toplevel(self.root)
         self.download_window.title("동영상 다운로드")
         self.download_window.geometry("500x600")
-        
         main_frame = ttk.Frame(self.download_window, relief="solid", padding=10)
         # main_frame.grid(row=0, column=0, padx=5, pady=5)
         main_frame.grid(row=0, column=0, padx=5, pady=5, sticky='n')
@@ -262,11 +289,22 @@ class View():
 
         self.download_video_var_states = []
 
-        for i, item in enumerate(Course.getAllActivityList(VideoActivity)):
-            var = tk.BooleanVar(value=True)
-            cb = ttk.Checkbutton(scrollable_frame, text=item.title, variable=var)
-            cb.grid(row=i, column=0, sticky='w')
-            self.download_video_var_states.append(var)
+        for i, course in enumerate(Course.course_list):
+            self.video_vars.append([])
+            course_var = tk.BooleanVar(value=True)
+            self.course_vars.append(course_var)
+            activity_list = course.getActivityList(VideoActivity)
+            if len(activity_list) == 0:
+                continue
+            createdownloadCheckcbox(i)
+            ttk.Label(scrollable_frame, text=' ').grid(row=row, column=0, sticky='w')
+            
+
+        # for i, item in enumerate(Course.getAllActivityList(VideoActivity)):
+        #     var = tk.BooleanVar(value=True)
+        #     cb = ttk.Checkbutton(scrollable_frame, text=item.title, variable=var)
+        #     cb.grid(row=i, column=0, sticky='w')
+        #     self.download_video_var_states.append(var)
 
 
 
@@ -321,16 +359,28 @@ class View():
                 self.state.set('다운로드 중')
                 if not os.path.exists('./output/'):os.mkdir('./output/')
                 log_print('\n동영상 다운로드를 시작합니다.')
-                for i, video in enumerate(Course.getAllActivityList(VideoActivity)):
-                    if not self.download_video_var_states[i].get(): continue
-                    for course in Course.course_list:
-                        if video in course.getActivityList(VideoActivity):
-                            subject_name = course.title
+                for i, course in enumerate(Course.course_list):
+                    activity_list = course.getActivityList(VideoActivity)
+                    subject_name = course.title
                     file_dir = './output/' + subject_name + '/'
-                    if not os.path.exists(file_dir):os.mkdir(file_dir)
-                    log_print('다운로드 중 : '+video.title)
-                    log_print(f"{video.m3u8}|{file_dir}|{video.title}")
-                    m3u8_To_MP4.multithread_download(m3u8_uri=video.m3u8, mp4_file_dir=file_dir, mp4_file_name=video.title)
+                    for j, video in enumerate(activity_list):
+                        if not self.video_vars[i][j].get(): continue # video variable off인 경우
+                        # continuefile_dir = './output/' + subject_name + '/'
+                        if not os.path.exists(file_dir):os.mkdir(file_dir)
+                        log_print('다운로드 중 : '+video.title)
+                        # log_print(f"{video.m3u8}|{file_dir}|{video.title}")
+                        m3u8_To_MP4.multithread_download(m3u8_uri=video.m3u8, mp4_file_dir=file_dir, mp4_file_name=video.title)
+                
+                # for i, video in enumerate(Course.getAllActivityList(VideoActivity)):
+                #     if not self.download_video_var_states[i].get(): continue
+                #     for course in Course.course_list:
+                #         if video in course.getActivityList(VideoActivity):
+                #             subject_name = course.title
+                    # file_dir = './outtput/' + subject_name + '/'
+                    # if not os.path.exists(file_dir):os.mkdir(file_dir)
+                    # log_print('다운로드 중 : '+video.title)
+                    # log_print(f"{video.m3u8}|{file_dir}|{video.title}")
+                    # m3u8_To_MP4.multihread_download(m3u8_uri=video.m3u8, mp4_file_dir=file_dir, mp4_file_name=video.title)
                 log_print('모든 다운로드가 완료되었습니다.')
                 self.state.set('대기 중')
             except:
@@ -358,6 +408,17 @@ class View():
         with open('output/CourseData.txt', 'w', encoding='utf-8') as f:
             f.write(Course.printCourse())
         log_print('output/CourseData.txt으로 출력을 완료하였습니다.')
+
+    def toggleAllCheckBox(self, course_number):
+        # log_print(self.video_vars)
+        # i =  self.course_vars.index(course_var)
+        video_vars = self.video_vars[course_number]
+        course_var = self.course_vars[course_number]
+        # log_print(course_var)   
+        # log_print(self.video_vars[course_number])
+        state = course_var.get()
+        for var in video_vars:
+            var.set(state)
 
 
 

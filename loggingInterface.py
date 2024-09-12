@@ -27,6 +27,7 @@ def __loggerInit():
 logger = __loggerInit()
 
 def log_print(txt='', end='\n'):
+    txt = str(txt)
     logger.info(txt)
     log_queue.put(txt+end)
 
